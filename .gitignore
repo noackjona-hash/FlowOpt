@@ -1,0 +1,10 @@
+# Build-Artefakte
+/build/
+*.o
+*.a
+*.out
+
+# Editor/IDE
+.cache/
+compile_commands.json
+.vscode/
