@@ -8,3 +8,7 @@
 .cache/
 compile_commands.json
 .vscode/
+
+# Trainer-Outputs
+best_policy.json
+*_policy.json
