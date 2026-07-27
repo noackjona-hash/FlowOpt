@@ -26,6 +26,14 @@ World ScenarioLoader::demoGrid() {
         builder.addEdge(nodes[i + 1], nodes[i], Real(100), kLimit, 1);
     }
 
+    // Lane-Indizes entsprechen der Reihenfolge oben:
+    //   vorwaerts (0->3): lane0 -> lane2 -> lane4
+    //   rueckwaerts(3->0): lane5 -> lane3 -> lane1
+    builder.connectLanes(LaneId{0}, LaneId{2});
+    builder.connectLanes(LaneId{2}, LaneId{4});
+    builder.connectLanes(LaneId{5}, LaneId{3});
+    builder.connectLanes(LaneId{3}, LaneId{1});
+
     World world;
     world.net = builder.finalize();
     world.syncSignalBuffer();

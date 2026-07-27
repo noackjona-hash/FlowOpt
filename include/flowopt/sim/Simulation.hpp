@@ -36,6 +36,9 @@ public:
     [[nodiscard]] const SimConfig& config() const noexcept { return config_; }
 
 private:
+    // Sortiert laneQueue je Lane nach Laengsposition (Vordermann-Lookup in O(1)).
+    void rebuildOccupancy();
+
     // Die einzelnen, deterministisch geordneten Phasen eines Steps.
     void phaseSpawn(Real dt);
     void phaseSignals(Real dt);
@@ -50,6 +53,16 @@ private:
     ILogger*   logger_{nullptr};
 
     std::vector<std::unique_ptr<ITrafficSignalController>> controllers_;
+
+    // --- Topologie-Vorberechnung (einmalig im Konstruktor) ---
+    std::vector<std::vector<LaneId>> nodeApproaches_; // Zufahrts-Lanes je Kreuzung
+    std::vector<LaneId>              entryLanes_;      // Rand-Lanes ohne Vorgaenger (Quellen)
+
+    // --- Wiederverwendete Scratch-Buffer (vermeiden Allokation pro Step) ---
+    std::vector<Real>          accelScratch_;  // je Fahrzeug-Slot
+    std::vector<std::uint32_t> queueScratch_;  // je Approach einer Kreuzung
+    std::vector<SignalState>   stateScratch_;
+    std::vector<std::uint8_t>  wasStopped_;    // fuer Stop-Zaehlung je Slot
 };
 
 } // namespace flowopt

@@ -28,6 +28,12 @@ int main(int argc, char** argv) {
     std::printf("  steps        : %llu\n", static_cast<unsigned long long>(m.stepsRun));
     std::printf("  nodes        : %zu\n", sim.world().net.nodeCount());
     std::printf("  lanes        : %zu\n", sim.world().net.laneCount());
+    std::printf("  spawned      : %llu\n", static_cast<unsigned long long>(m.vehiclesSpawned));
+    std::printf("  arrived      : %llu\n", static_cast<unsigned long long>(m.vehiclesArrived));
+    std::printf("  in-network   : %zu\n", sim.world().vehicles.activeCount());
+    std::printf("  total stops  : %llu\n", static_cast<unsigned long long>(m.totalStops));
+    std::printf("  wait time    : %.1f s\n", m.totalWaitTime);
+    std::printf("  distance     : %.1f m\n", m.distanceTravelled);
     std::printf("  wall time    : %.2f ms\n", ms);
     std::printf("  steps/second : %.0f\n", m.stepsRun / (ms / 1000.0));
     std::printf("  fitness      : %.2f\n", m.fitness());

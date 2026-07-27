@@ -20,9 +20,10 @@ struct World {
     Real          time      = Real(0);
     std::uint64_t stepIndex = 0;
 
-    // Bringt laneSignal auf die Lane-Anzahl des Netzes (alles initial Rot).
+    // Bringt laneSignal auf die Lane-Anzahl des Netzes. Default Gruen: nur
+    // kontrollierte Zufahrts-Lanes werden von einem Controller auf Rot gesetzt.
     void syncSignalBuffer() {
-        laneSignal.assign(net.laneCount(), SignalState::Red);
+        laneSignal.assign(net.laneCount(), SignalState::Green);
     }
 };
 

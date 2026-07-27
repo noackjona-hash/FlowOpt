@@ -41,12 +41,36 @@ static void testIdmDecelerates() {
 
 static void testSimulationRuns() {
     SimConfig cfg;
-    cfg.steps = 100;
+    cfg.steps = 5000;
+    cfg.spawnRate = Real(0.5);
     Simulation sim(ScenarioLoader::demoGrid(), cfg);
-    sim.addController(std::make_unique<FixedTimeController>());
+    for (std::size_t n = 0; n < sim.world().net.nodeCount(); ++n) {
+        sim.addController(std::make_unique<FixedTimeController>());
+    }
     sim.run(cfg.steps);
-    assert(sim.world().stepIndex == 100);
-    assert(sim.metrics().stepsRun == 100);
+
+    const Metrics& m = sim.metrics();
+    assert(sim.world().stepIndex == 5000);
+    assert(m.stepsRun == 5000);
+    assert(m.vehiclesSpawned > 0);          // Quellen erzeugen Fahrzeuge
+    assert(m.vehiclesArrived > 0);          // Fahrzeuge erreichen den Netzrand
+    assert(m.distanceTravelled > 0.0);      // Fahrzeuge bewegen sich
+    assert(m.vehiclesArrived <= m.vehiclesSpawned);
+}
+
+static void testDeterminism() {
+    auto runOnce = [] {
+        SimConfig cfg;
+        cfg.steps = 3000;
+        cfg.seed = 123;
+        Simulation sim(ScenarioLoader::demoGrid(), cfg);
+        for (std::size_t n = 0; n < sim.world().net.nodeCount(); ++n) {
+            sim.addController(std::make_unique<FixedTimeController>());
+        }
+        sim.run(cfg.steps);
+        return sim.metrics().vehiclesArrived;
+    };
+    assert(runOnce() == runOnce());          // gleicher Seed -> identisches Ergebnis
 }
 
 int main() {
@@ -54,6 +78,7 @@ int main() {
     testVehiclePool();
     testIdmDecelerates();
     testSimulationRuns();
+    testDeterminism();
     std::printf("all tests passed\n");
     return 0;
 }
