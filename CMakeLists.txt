@@ -39,9 +39,26 @@ add_executable(flowopt_headless apps/main_headless.cpp)
 target_include_directories(flowopt_headless PRIVATE ${CMAKE_SOURCE_DIR}/apps)
 target_link_libraries(flowopt_headless PRIVATE flowopt_core)
 
-# --- GUI-App (optional, benoetigt Raylib) -----------------------------------
+# --- GA-Trainer (headless, optimiert PolicyController) ----------------------
+add_executable(flowopt_ga_trainer apps/main_ga_trainer.cpp)
+target_include_directories(flowopt_ga_trainer PRIVATE ${CMAKE_SOURCE_DIR}/apps)
+target_link_libraries(flowopt_ga_trainer PRIVATE flowopt_core)
+
+# --- GUI-App (optional, benoetigt Raylib + OpenGL/X11) ----------------------
 if(FLOWOPT_GUI)
-    find_package(raylib REQUIRED)
+    find_package(raylib 4.0 QUIET)
+    if(NOT raylib_FOUND)
+        # Kein System-Raylib gefunden -> Quellen holen und mitbauen.
+        include(FetchContent)
+        set(BUILD_EXAMPLES OFF CACHE BOOL "" FORCE)
+        set(BUILD_GAMES    OFF CACHE BOOL "" FORCE)
+        FetchContent_Declare(
+            raylib
+            GIT_REPOSITORY https://github.com/raysan5/raylib.git
+            GIT_TAG        5.5
+        )
+        FetchContent_MakeAvailable(raylib)
+    endif()
     add_executable(flowopt_gui apps/main_gui.cpp src/render/RaylibRenderer.cpp)
     target_include_directories(flowopt_gui PRIVATE ${CMAKE_SOURCE_DIR}/apps)
     target_link_libraries(flowopt_gui PRIVATE flowopt_core raylib)

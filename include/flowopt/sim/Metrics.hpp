@@ -18,10 +18,11 @@ struct Metrics {
     double totalTravelTime   = 0.0;   // aufsummierte Reisezeit [s]
     double distanceTravelled = 0.0;   // gesamte gefahrene Strecke [m]
 
-    // Beispiel-Fitness: kleiner ist besser (Wartezeit dominiert).
+    // Beispiel-Fitness (kleiner ist besser): Wartezeit und Stopps bestrafen,
+    // Durchsatz belohnen. Zielgroesse fuer GA/RL-Optimierung.
     [[nodiscard]] double fitness() const noexcept {
         const double throughput = static_cast<double>(vehiclesArrived);
-        return totalWaitTime - 10.0 * throughput;
+        return totalWaitTime + 2.0 * static_cast<double>(totalStops) - 10.0 * throughput;
     }
 
     void reset() { *this = Metrics{}; }

@@ -7,6 +7,8 @@
 #include "flowopt/sim/SimConfig.hpp"
 #include "flowopt/sim/Simulation.hpp"
 
+#include "GenomeIO.hpp"
+
 #include <charconv>
 #include <cstdlib>
 #include <memory>
@@ -34,6 +36,7 @@ namespace flowopt {
         if (a == "--steps")           cfg.steps = toU64(next(), cfg.steps);
         else if (a == "--seed")       cfg.seed = toU64(next(), cfg.seed);
         else if (a == "--scenario")   cfg.scenarioPath = std::string(next());
+        else if (a == "--policy")     cfg.policyPath = std::string(next());
         else if (a == "--steps-per-frame") cfg.stepsPerFrame = static_cast<std::uint32_t>(toU64(next(), 1));
         else if (a == "--headless")   cfg.gui = false;
         else if (a == "--gui")        cfg.gui = true;
@@ -66,6 +69,14 @@ namespace flowopt {
     // Ein Controller je Kreuzung (Grundgeruest: global identischer Typ).
     for (std::size_t n = 0; n < sim.world().net.nodeCount(); ++n) {
         sim.addController(makeController(cfg.controller));
+    }
+
+    // Optional: trainiertes Chromosom laden und auf die Controller verteilen.
+    if (!cfg.policyPath.empty()) {
+        const std::vector<Real> genome = loadGenome(cfg.policyPath);
+        if (!genome.empty()) {
+            sim.setParameters(genome);
+        }
     }
     return sim;
 }

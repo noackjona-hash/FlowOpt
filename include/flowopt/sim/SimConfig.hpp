@@ -20,6 +20,7 @@ struct SimConfig {
     ControllerKind controller = ControllerKind::FixedTime;
 
     std::string scenarioPath;               // leer => eingebautes Demo-Netz
+    std::string policyPath;                 // optional: trainiertes Chromosom (JSON) laden
     bool        gui           = false;      // true => GUI-App (nur mit FLOWOPT_GUI-Build)
     std::uint32_t stepsPerFrame = 1;        // GUI: Sim-Schritte pro gerendertem Frame
 };

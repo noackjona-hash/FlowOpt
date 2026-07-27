@@ -15,7 +15,7 @@ constexpr Real kFreeRoad  = Real(1000);  // "unendliche" Luecke bei freier Fahrb
 } // namespace
 
 Simulation::Simulation(World world, SimConfig config)
-    : world_(std::move(world)), config_(config), rng_(config.seed) {
+    : world_(std::move(world)), config_(config), rng_(config.seed), router_(world_.net) {
     world_.syncSignalBuffer();
 
     const RoadNetwork& net = world_.net;
@@ -49,6 +49,25 @@ void Simulation::addController(std::unique_ptr<ITrafficSignalController> control
         controller->bind(NodeId{static_cast<std::uint32_t>(node)}, nodeApproaches_[node]);
     }
     controllers_.push_back(std::move(controller));
+}
+
+std::size_t Simulation::parameterCount() const noexcept {
+    std::size_t total = 0;
+    for (const auto& c : controllers_) {
+        total += c->parameterCount();
+    }
+    return total;
+}
+
+void Simulation::setParameters(std::span<const Real> flat) {
+    std::size_t offset = 0;
+    for (const auto& c : controllers_) {
+        const std::size_t k = c->parameterCount();
+        if (offset + k <= flat.size()) {
+            c->setParameters(flat.subspan(offset, k));
+        }
+        offset += k;
+    }
 }
 
 void Simulation::step(Real dt) {
@@ -91,6 +110,21 @@ void Simulation::rebuildOccupancy() {
     }
 }
 
+// Naechste Lane laut A*-Route (falls vorhanden), sonst Standard-Spurfolge.
+LaneId Simulation::nextLaneForVehicle(std::uint32_t slot) const {
+    const VehiclePool& v = world_.vehicles;
+    const std::uint32_t handle = v.routeHandle[slot];
+    if (handle != kInvalidIdx) {
+        const std::span<const LaneId> ls = router_.lanes(handle);
+        const std::uint32_t cursor = v.routeCursor[slot];
+        if (cursor < ls.size()) {
+            return ls[cursor];
+        }
+        return kInvalidLane;  // Route abgefahren -> Ziel erreicht
+    }
+    return world_.net.laneNextDefault[idx(v.lane[slot])];
+}
+
 // --- Spawn ------------------------------------------------------------------
 void Simulation::phaseSpawn(Real dt) {
     VehiclePool& v = world_.vehicles;
@@ -111,8 +145,22 @@ void Simulation::phaseSpawn(Real dt) {
         const EdgeId e = net.laneEdge[idx(entry)];
         params.v0 = net.edgeSpeedLimit[idx(e)] * rng_.nextRange(Real(0.9), Real(1.1));
 
-        const NodeId dest = net.edgeTo[idx(e)];
+        // Zielknoten zufaellig waehlen und A*-Route ab dem Downstream-Knoten der
+        // Entry-Lane berechnen. Die Route enthaelt die Lanes NACH der Entry-Lane;
+        // routeCursor zaehlt die bereits konsumierten Downstream-Lanes.
+        const NodeId downstream = net.edgeTo[idx(e)];
+        NodeId dest = downstream;
+        const std::size_t nNodes = net.nodeCount();
+        if (nNodes > 1) {
+            do {
+                dest = NodeId{static_cast<std::uint32_t>(rng_.nextU64() % nNodes)};
+            } while (idx(dest) == idx(downstream));
+        }
+        const std::uint32_t handle = router_.route(downstream, dest);
+
         const VehicleId id = v.spawn(entry, dest, params);
+        v.routeHandle[idx(id)] = handle;
+        v.routeCursor[idx(id)] = 0;
         ++metrics_.vehiclesSpawned;
 
         if (idx(id) < wasStopped_.size()) {
@@ -181,7 +229,7 @@ void Simulation::phaseVehicles(Real dt) {
                     gap = distToEnd;
                     deltaV = v.speed[s];
                 } else {
-                    const LaneId nextLane = net.laneNextDefault[l];
+                    const LaneId nextLane = nextLaneForVehicle(s);
                     const auto* nq = (idx(nextLane) != kInvalidIdx)
                                          ? &net.laneQueue[idx(nextLane)] : nullptr;
                     if (nq && !nq->empty()) {
@@ -247,9 +295,9 @@ void Simulation::phaseTransitions() {
             continue;
         }
 
-        const LaneId nextLane = net.laneNextDefault[l];
+        const LaneId nextLane = nextLaneForVehicle(s);
         if (idx(nextLane) == kInvalidIdx) {
-            // Netzgrenze erreicht -> Fahrzeug verlaesst die Simulation.
+            // Route abgefahren bzw. Netzgrenze -> Fahrzeug verlaesst die Simulation.
             v.despawn(VehicleId{s});
             ++metrics_.vehiclesArrived;
         } else {
@@ -257,6 +305,9 @@ void Simulation::phaseTransitions() {
             const Real overflow = v.posOnLane[s] - net.laneLength[l];
             v.lane[s] = nextLane;
             v.posOnLane[s] = std::min(overflow, net.laneLength[idx(nextLane)]);
+            if (v.routeHandle[s] != kInvalidIdx) {
+                ++v.routeCursor[s];  // eine Downstream-Lane konsumiert
+            }
         }
     }
 }

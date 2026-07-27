@@ -3,6 +3,7 @@
 #include "flowopt/core/Rng.hpp"
 #include "flowopt/core/Types.hpp"
 #include "flowopt/io/ILogger.hpp"
+#include "flowopt/routing/Router.hpp"
 #include "flowopt/signals/ITrafficSignalController.hpp"
 #include "flowopt/sim/Metrics.hpp"
 #include "flowopt/sim/SimConfig.hpp"
@@ -25,6 +26,12 @@ public:
 
     void setLogger(ILogger* logger) noexcept { logger_ = logger; }
 
+    // --- Controller-Parameter (fuer GA/RL) ---
+    // Gesamtzahl der Parameter ueber alle Controller (flacher Optimierungsvektor).
+    [[nodiscard]] std::size_t parameterCount() const noexcept;
+    // Verteilt einen flachen Parametervektor der Reihe nach auf alle Controller.
+    void setParameters(std::span<const Real> flat);
+
     // Ein einzelner, deterministischer Simulationsschritt.
     void step(Real dt);
 
@@ -39,6 +46,10 @@ private:
     // Sortiert laneQueue je Lane nach Laengsposition (Vordermann-Lookup in O(1)).
     void rebuildOccupancy();
 
+    // Naechste Lane eines Fahrzeugs: folgt seiner A*-Route, faellt sonst auf
+    // die Standard-Spurfolge (laneNextDefault) zurueck. kInvalidLane => Routenende.
+    [[nodiscard]] LaneId nextLaneForVehicle(std::uint32_t slot) const;
+
     // Die einzelnen, deterministisch geordneten Phasen eines Steps.
     void phaseSpawn(Real dt);
     void phaseSignals(Real dt);
@@ -51,6 +62,7 @@ private:
     Metrics    metrics_;
     Rng        rng_;
     ILogger*   logger_{nullptr};
+    Router     router_;
 
     std::vector<std::unique_ptr<ITrafficSignalController>> controllers_;
 

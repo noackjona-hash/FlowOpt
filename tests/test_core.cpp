@@ -1,6 +1,7 @@
 // Leichte, framework-freie Smoke-Tests fuer das Grundgeruest.
 // Nutzt <cassert>, damit noch keine Test-Dependency gebraucht wird.
 #include "flowopt/io/ScenarioLoader.hpp"
+#include "flowopt/routing/Router.hpp"
 #include "flowopt/signals/FixedTimeController.hpp"
 #include "flowopt/sim/SimConfig.hpp"
 #include "flowopt/sim/Simulation.hpp"
@@ -37,6 +38,26 @@ static void testIdmDecelerates() {
     const Real acc = idmAccel(/*v*/ 13.0f, /*v0*/ 13.9f, /*T*/ 1.5f, /*aMax*/ 1.2f,
                               /*bComf*/ 2.0f, /*s0*/ 2.0f, /*gap*/ 3.0f, /*deltaV*/ 8.0f);
     assert(acc < 0.0f);
+}
+
+static void testRouter() {
+    World w = ScenarioLoader::demoGrid();
+    Router r(w.net);
+
+    // Vorwaerts 0->3 muss ueber lane0 -> lane2 -> lane4 fuehren.
+    const std::uint32_t h = r.route(NodeId{0}, NodeId{3});
+    assert(h != kInvalidIdx);
+    const auto fwd = r.lanes(h);
+    assert(fwd.size() == 3);
+    assert(idx(fwd[0]) == 0 && idx(fwd[1]) == 2 && idx(fwd[2]) == 4);
+
+    // OD-Cache: gleiche Anfrage liefert dasselbe Handle (kein zweites A*).
+    assert(r.route(NodeId{0}, NodeId{3}) == h);
+
+    // Rueckwaerts 3->0 ueber lane5 -> lane3 -> lane1.
+    const auto rev = r.lanes(r.route(NodeId{3}, NodeId{0}));
+    assert(rev.size() == 3);
+    assert(idx(rev[0]) == 5 && idx(rev[1]) == 3 && idx(rev[2]) == 1);
 }
 
 static void testSimulationRuns() {
@@ -77,6 +98,7 @@ int main() {
     testDemoGrid();
     testVehiclePool();
     testIdmDecelerates();
+    testRouter();
     testSimulationRuns();
     testDeterminism();
     std::printf("all tests passed\n");
