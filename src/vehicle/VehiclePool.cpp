@@ -45,6 +45,10 @@ VehicleId VehiclePool::spawn(LaneId startLane, NodeId dest, const Params& p) {
     return VehicleId{slot};
 }
 
+VehicleId VehiclePool::spawn(LaneId startLane, NodeId dest) {
+    return spawn(startLane, dest, Params{});
+}
+
 void VehiclePool::despawn(VehicleId id) {
     const std::uint32_t slot = idx(id);
     if (slot >= active.size() || active[slot] == 0) {

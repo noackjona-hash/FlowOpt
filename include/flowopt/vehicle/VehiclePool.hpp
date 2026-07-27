@@ -47,7 +47,10 @@ struct VehiclePool {
     };
 
     // Erzeugt ein Fahrzeug (nutzt Free-List wenn moeglich) und gibt seine Id zurueck.
-    [[nodiscard]] VehicleId spawn(LaneId startLane, NodeId dest, const Params& p = Params{});
+    [[nodiscard]] VehicleId spawn(LaneId startLane, NodeId dest, const Params& p);
+
+    // Bequemlichkeits-Overload mit Standard-IDM-Parametern.
+    [[nodiscard]] VehicleId spawn(LaneId startLane, NodeId dest);
 
     // Gibt einen Slot frei (Fahrzeug hat sein Ziel erreicht).
     void despawn(VehicleId id);
